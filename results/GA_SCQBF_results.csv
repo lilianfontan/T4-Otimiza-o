@@ -1,0 +1,6 @@
+Instance,Experiment,Generations,Population,MutationRate,BestFitness
+instances/qbfsc/scqbf025.txt,PADRÃO,1000,100,0.0500,202.00000000
+instances/qbfsc/scqbf025.txt,+POP (x2),1000,200,0.0500,202.00000000
+instances/qbfsc/scqbf025.txt,+MUT (x2),1000,100,0.1000,202.00000000
+instances/qbfsc/scqbf025.txt,+EVOL1 (x2 gerações),2000,100,0.0500,202.00000000
+instances/qbfsc/scqbf025.txt,+EVOL2 (x2 pop + x2 gerações),2000,200,0.0500,202.00000000

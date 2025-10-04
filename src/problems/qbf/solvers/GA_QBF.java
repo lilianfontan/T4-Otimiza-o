@@ -1,107 +1,100 @@
 package problems.qbf.solvers;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Locale;
 
-import metaheuristics.ga.AbstractGA;
-import problems.qbf.QBF;
+import metaheuristics.ga.GA_SCQBF;
 import problems.qbf.SCQBF;
 import solutions.Solution;
 
-public class GA_QBF extends AbstractGA<Integer, Integer> {
+/**
+ * Executa 5 experimentos automáticos com o problema MAX-SC-QBF
+ * e salva resultados em arquivo CSV.
+ *
+ * Experimentos:
+ *  1. PADRÃO
+ *  2. +POP (x2 população)
+ *  3. +MUT (x2 taxa de mutação)
+ *  4. +EVOL1 (x2 gerações)
+ *  5. +EVOL2 (x2 pop e x2 gerações)
+ */
+public class GA_QBF {
 
-    public GA_QBF(Integer generations, Integer popSize, Double mutationRate, QBF objFunction) {
-        super(objFunction, generations, popSize, mutationRate);
-    }
-
-    @Override
-    public Solution<Integer> createEmptySol() {
-        Solution<Integer> sol = new Solution<Integer>();
-        sol.cost = 0.0;
-        return sol;
-    }
-
-    @Override
-    protected Solution<Integer> decode(Chromosome chromosome) {
-        Solution<Integer> solution = createEmptySol();
-        for (int locus = 0; locus < chromosome.size(); locus++) {
-            if (chromosome.get(locus) == 1) {
-                solution.add(locus);
-            }
-        }
-        ObjFunction.evaluate(solution);
-        return solution;
-    }
-
-    @Override
-    protected Chromosome generateRandomChromosome() {
-        Chromosome chromosome = new Chromosome();
-        for (int i = 0; i < chromosomeSize; i++) {
-            chromosome.add(rng.nextInt(2));
-        }
-        return chromosome;
-    }
-
-    @Override
-    protected Double fitness(Chromosome chromosome) {
-        return decode(chromosome).cost;
-    }
-
-    @Override
-    protected void mutateGene(Chromosome chromosome, Integer locus) {
-        chromosome.set(locus, 1 - chromosome.get(locus));
-    }
+    private static final String RESULTS_DIR = "results";
 
     public static void main(String[] args) throws IOException {
 
-        int generations = 1000;
-        int pop1 = 100, pop2 = 200;
-        double mut1 = 1.0 / 100.0, mut2 = 2.0 / 100.0;
+        Locale.setDefault(Locale.US);
 
-        String filename = "instances/qbfsc/scqbf025.txt"; // o arquivo que você mostrou
+        // ======== INSTÂNCIAS ========
+        String[] instanceFiles = {
+                "instances/qbfsc/scqbf025.txt"
+            };
 
-        long start, end;
-        Solution<Integer> best;
+        // ======== PARÂMETROS BASE ========
+        int popSizeBase = 100;
+        double mutationRateBase = 0.05;
+        int generationsBase = 1000;
 
-        // 1. Padrão
-        System.out.println("==== PADRÃO ====");
-        start = System.currentTimeMillis();
-        GA_QBF ga1 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 1000));
-        best = ga1.solve();
-        end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
+        // ======== PREPARA CSV ========
+        File dir = new File(RESULTS_DIR);
+        if (!dir.exists()) dir.mkdirs();
+        String csvFile = RESULTS_DIR + "/GA_SCQBF_results.csv";
+        PrintWriter out = new PrintWriter(new FileWriter(csvFile));
+        out.println("Instance,Experiment,Generations,Population,MutationRate,BestFitness");
 
-        // 2. +POP
-        System.out.println("==== PADRÃO + POP ====");
-        start = System.currentTimeMillis();
-        GA_QBF ga2 = new GA_QBF(generations, pop2, mut1, new SCQBF(filename, 1000));
-        best = ga2.solve();
-        end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
+        // ======== LOOP DAS INSTÂNCIAS ========
+        for (String filename : instanceFiles) {
 
-        // 3. +MUT
-        System.out.println("==== PADRÃO + MUT ====");
-        start = System.currentTimeMillis();
-        GA_QBF ga3 = new GA_QBF(generations, pop1, mut2, new SCQBF(filename, 1000));
-        best = ga3.solve();
-        end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
+            System.out.println("\n==============================");
+            System.out.println("Instância: " + filename);
+            System.out.println("==============================\n");
 
-        // 4. +EVOL1
-        System.out.println("==== PADRÃO + EVOL1 (λ=500) ====");
-        start = System.currentTimeMillis();
-        GA_QBF ga4 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 500));
-        best = ga4.solve();
-        end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
+            // (1) Padrão
+            runExperiment(out, filename, "PADRÃO", generationsBase, popSizeBase, mutationRateBase);
 
-        // 5. +EVOL2
-        System.out.println("==== PADRÃO + EVOL2 (λ=5000) ====");
-        start = System.currentTimeMillis();
-        GA_QBF ga5 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 5000));
-        best = ga5.solve();
-        end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
-        System.out.println("==== Fim da Execução ====");
-        
+            // (2) +POP
+            runExperiment(out, filename, "+POP (x2)", generationsBase, popSizeBase * 2, mutationRateBase);
+
+            // (3) +MUT
+            runExperiment(out, filename, "+MUT (x2)", generationsBase, popSizeBase, mutationRateBase * 2);
+
+            // (4) +EVOL1 (x2 gerações)
+            runExperiment(out, filename, "+EVOL1 (x2 gerações)", generationsBase * 2, popSizeBase, mutationRateBase);
+
+            // (5) +EVOL2 (x2 pop + x2 gerações)
+            runExperiment(out, filename, "+EVOL2 (x2 pop + x2 gerações)", generationsBase * 2, popSizeBase * 2, mutationRateBase);
+        }
+
+        out.close();
+        System.out.println("\n>>> Todos os experimentos concluídos com sucesso!");
+        System.out.println("Resultados salvos em: " + csvFile);
+    }
+
+    private static void runExperiment(PrintWriter out, String filename, String expName,
+                                      int generations, int popSize, double mutationRate) throws IOException {
+
+        System.out.printf("Rodando experimento %-25s | G=%d, Pop=%d, Mut=%.3f\n",
+                expName, generations, popSize, mutationRate);
+
+        long start = System.currentTimeMillis();
+
+        SCQBF problem = new SCQBF(filename);
+        GA_SCQBF ga = new GA_SCQBF(problem, generations, popSize, mutationRate);
+        Solution<Integer> best = ga.solve();
+
+        long end = System.currentTimeMillis();
+        double time = (end - start) / 1000.0;
+
+        System.out.printf("  >> Melhor fitness: %.4f | Tempo: %.2fs\n", best.cost, time);
+        System.out.println("  >> Solução: " + best);
+
+        // grava no CSV
+        out.printf("%s,%s,%d,%d,%.4f,%.8f\n",
+                filename, expName, generations, popSize, mutationRate, best.cost);
+        out.flush();
     }
 }
