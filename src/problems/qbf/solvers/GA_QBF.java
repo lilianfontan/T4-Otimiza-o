@@ -13,10 +13,6 @@ public class GA_QBF extends AbstractGA<Integer, Integer> {
         super(objFunction, generations, popSize, mutationRate);
     }
 
-    public GA_QBF(Integer generations, Integer popSize, Double mutationRate, String filename) throws IOException {
-        super(new QBF(filename), generations, popSize, mutationRate);
-    }
-
     @Override
     public Solution<Integer> createEmptySol() {
         Solution<Integer> sol = new Solution<Integer>();
@@ -40,7 +36,7 @@ public class GA_QBF extends AbstractGA<Integer, Integer> {
     protected Chromosome generateRandomChromosome() {
         Chromosome chromosome = new Chromosome();
         for (int i = 0; i < chromosomeSize; i++) {
-            chromosome.add(rng.nextInt(2)); // 0 ou 1
+            chromosome.add(rng.nextInt(2));
         }
         return chromosome;
     }
@@ -55,75 +51,57 @@ public class GA_QBF extends AbstractGA<Integer, Integer> {
         chromosome.set(locus, 1 - chromosome.get(locus));
     }
 
-    /**
-     * Método principal: executa todos os experimentos padrão e variações:
-     * 1. PADRÃO
-     * 2. PADRÃO+POP
-     * 3. PADRÃO+MUT
-     * 4. PADRÃO+EVOL1 (SCQBF)
-     * 5. PADRÃO+EVOL2 (SCQBF com λ diferente)
-     */
     public static void main(String[] args) throws IOException {
 
-        // Parâmetros base
         int generations = 1000;
-        int pop1 = 100;
-        int pop2 = 200; // +POP
-        double mut1 = 1.0 / 100.0;
-        double mut2 = 2.0 / 100.0; // +MUT
-        String filenameQBF = "instances/qbf/qbf100";
-        String filenameCoverage = "instances/scqbf/coverage100";
+        int pop1 = 100, pop2 = 200;
+        double mut1 = 1.0 / 100.0, mut2 = 2.0 / 100.0;
+
+        String filename = "instances/qbfsc/scqbf025.txt"; // o arquivo que você mostrou
 
         long start, end;
         Solution<Integer> best;
 
-        // -------------------------------
-        System.out.println("==== EXPERIMENTO 1: PADRÃO ====");
+        // 1. Padrão
+        System.out.println("==== PADRÃO ====");
         start = System.currentTimeMillis();
-        GA_QBF ga1 = new GA_QBF(generations, pop1, mut1, filenameQBF);
+        GA_QBF ga1 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 1000));
         best = ga1.solve();
         end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n",
-                best, (end - start) / 1000.0);
+        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
 
-        // -------------------------------
-        System.out.println("==== EXPERIMENTO 2: PADRÃO + POP ====");
+        // 2. +POP
+        System.out.println("==== PADRÃO + POP ====");
         start = System.currentTimeMillis();
-        GA_QBF ga2 = new GA_QBF(generations, pop2, mut1, filenameQBF);
+        GA_QBF ga2 = new GA_QBF(generations, pop2, mut1, new SCQBF(filename, 1000));
         best = ga2.solve();
         end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n",
-                best, (end - start) / 1000.0);
+        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
 
-        // -------------------------------
-        System.out.println("==== EXPERIMENTO 3: PADRÃO + MUT ====");
+        // 3. +MUT
+        System.out.println("==== PADRÃO + MUT ====");
         start = System.currentTimeMillis();
-        GA_QBF ga3 = new GA_QBF(generations, pop1, mut2, filenameQBF);
+        GA_QBF ga3 = new GA_QBF(generations, pop1, mut2, new SCQBF(filename, 1000));
         best = ga3.solve();
         end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n",
-                best, (end - start) / 1000.0);
+        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
 
-        // -------------------------------
-        System.out.println("==== EXPERIMENTO 4: PADRÃO + EVOL1 (SCQBF λ=1000) ====");
+        // 4. +EVOL1
+        System.out.println("==== PADRÃO + EVOL1 (λ=500) ====");
         start = System.currentTimeMillis();
-        SCQBF scqbf1 = new SCQBF(filenameQBF, filenameCoverage, 1000.0);
-        GA_QBF ga4 = new GA_QBF(generations, pop1, mut1, scqbf1);
+        GA_QBF ga4 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 500));
         best = ga4.solve();
         end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n",
-                best, (end - start) / 1000.0);
+        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
 
-        // -------------------------------
-        System.out.println("==== EXPERIMENTO 5: PADRÃO + EVOL2 (SCQBF λ=5000) ====");
+        // 5. +EVOL2
+        System.out.println("==== PADRÃO + EVOL2 (λ=5000) ====");
         start = System.currentTimeMillis();
-        SCQBF scqbf2 = new SCQBF(filenameQBF, filenameCoverage, 5000.0);
-        GA_QBF ga5 = new GA_QBF(generations, pop1, mut1, scqbf2);
+        GA_QBF ga5 = new GA_QBF(generations, pop1, mut1, new SCQBF(filename, 5000));
         best = ga5.solve();
         end = System.currentTimeMillis();
-        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n",
-                best, (end - start) / 1000.0);
-        
+        System.out.printf("Melhor solução: %s\nTempo: %.2fs\n\n", best, (end - start) / 1000.0);
         System.out.println("==== Fim da Execução ====");
+        
     }
 }

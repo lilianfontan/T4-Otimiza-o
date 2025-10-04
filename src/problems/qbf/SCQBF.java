@@ -4,61 +4,112 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
-import solutions.Solution;
-
+/**
+ * Classe SCQBF — implementação do Set Covering Quadratic Binary Function (MAX-SC-QBF)
+ * baseada no modelo:
+ * 
+ * max Σ Σ a_ij * y_ij
+ * 
+ * com restrições lineares de cobertura e linearização do produto binário.
+ */
 public class SCQBF extends QBF {
 
-    // Para cada elemento k, a lista de subconjuntos i que o cobrem
-    private List<List<Integer>> coversOfK;
-    private double lambda; // penalização
+    private ArrayList<ArrayList<Integer>> subsets; // subconjuntos S_i
+    private int numElements;                       // número de elementos do universo
+    private double lambda;                         // parâmetro de penalização
 
-    public SCQBF(String fileMatrixA, String fileCoverageS, double lambda) throws IOException {
-        super(fileMatrixA);
-        this.lambda = lambda;
-        readCoverage(fileCoverageS);
+    public SCQBF(String filename) throws IOException {
+        super(filename);
     }
 
-    // Lê o arquivo de cobertura S_i (cada linha: "k i1 i2 i3 ...")
-    private void readCoverage(String filename) throws IOException {
-        coversOfK = new ArrayList<>();
-        BufferedReader br = new BufferedReader(new FileReader(filename));
-        String line;
-        while ((line = br.readLine()) != null) {
-            String[] parts = line.trim().split("\\s+");
-            List<Integer> covers = new ArrayList<>();
-            for (int i = 1; i < parts.length; i++) {
-                covers.add(Integer.parseInt(parts[i]));
-            }
-            coversOfK.add(covers);
-        }
-        br.close();
+    public SCQBF(String filename, double lambda) throws IOException {
+        super(filename);
+        this.lambda = lambda;
     }
 
     @Override
-    public Double evaluate(Solution<Integer> sol) {
-        setVariables(sol);
-        double q = evaluateQBF();
-        int violations = 0;
+    protected Integer readInput(String filename) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(filename));
 
-        for (int k = 0; k < coversOfK.size(); k++) {
-            int covered = 0;
-            for (int i : coversOfK.get(k)) {
-                if (variables[i] == 1.0)
-                    covered++;
-            }
-            if (covered < 1) // não coberto
-                violations += 1;
+        // ======= Leitura do número de subconjuntos =======
+        int n = Integer.parseInt(br.readLine().trim()); // número de subconjuntos
+        subsets = new ArrayList<>();
+        numElements = 0;
+
+        // ======= Leitura da linha de pesos (λ_i) =======
+        String[] weights = br.readLine().trim().split("\\s+");
+        Double[] vector = new Double[n];
+        for (int i = 0; i < n; i++) {
+            vector[i] = Double.parseDouble(weights[i]);
         }
 
-        double penalized = q - lambda * violations;
-        return sol.cost = penalized;
+        // ======= Leitura dos subconjuntos S_i =======
+        for (int i = 0; i < n; i++) {
+            String line = br.readLine();
+            String[] parts = line.trim().split("\\s+");
+            ArrayList<Integer> set = new ArrayList<>();
+            for (String p : parts) {
+                int val = Integer.parseInt(p);
+                set.add(val - 1); // converte para índice 0-based
+                numElements = Math.max(numElements, val);
+            }
+            subsets.add(set);
+        }
+
+        // ======= Leitura da matriz A (triangular superior) =======
+        A = new Double[n][n];
+
+        // Inicializa a matriz com zeros
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                A[i][j] = 0.0;
+            }
+        }
+
+        // Lê as linhas da matriz A
+        for (int i = 0; i < n; i++) {
+            String line = br.readLine();
+            if (line == null || line.trim().isEmpty()) break;
+
+            String[] values = line.trim().split("\\s+");
+            for (int j = 0; j < values.length; j++) {
+                double val = Double.parseDouble(values[j]);
+                int col = i + j;
+                if (col < n) {
+                    A[i][col] = val;
+                    A[col][i] = val; // mantém simetria
+                }
+            }
+        }
+
+        br.close();
+        return n;
     }
 
-    public static void main(String[] args) throws IOException {
-        // Exemplo de uso
-        SCQBF scqbf = new SCQBF("instances/qbf/qbf100", "instances/scqbf/coverage100", 1000.0);
-        System.out.println("Tamanho domínio = " + scqbf.getDomainSize());
+    @Override
+    public Double evaluateQBF() {
+        // mesma função objetivo da QBF, com penalização opcional por lambda
+        double result = 0.0;
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                result += variables[i] * A[i][j] * variables[j];
+            }
+        }
+        // se lambda > 0, adiciona penalização proporcional
+        result -= lambda * Math.abs(result);
+        return result;
+    }
+
+    public int getNumElements() {
+        return numElements;
+    }
+
+    public ArrayList<ArrayList<Integer>> getSubsets() {
+        return subsets;
+    }
+
+    public double getLambda() {
+        return lambda;
     }
 }
